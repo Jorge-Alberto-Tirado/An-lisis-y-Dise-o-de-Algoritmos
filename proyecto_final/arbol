@@ -1,0 +1,259 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+typedef enum { NEGRO, ROJO } Color;
+
+typedef struct Nodo {
+    int llave;
+    Color color;
+    struct Nodo *izq;
+    struct Nodo *der;
+    struct Nodo *padre;
+} Nodo;
+
+typedef struct ArbolRN {
+    Nodo *raiz;
+    Nodo *nulo;
+} ArbolRN;
+
+ArbolRN* crearArbol() {
+    ArbolRN *arbol = (ArbolRN*)malloc(sizeof(ArbolRN));
+    arbol->nulo = (Nodo*)malloc(sizeof(Nodo));
+    arbol->nulo->color = NEGRO;
+    arbol->nulo->izq = NULL;
+    arbol->nulo->der = NULL;
+    arbol->raiz = arbol->nulo;
+    return arbol;
+}
+
+// Rotacion izquierda de complejidad O(1)
+void rotarIzq(ArbolRN *arbol, Nodo *x) {
+    Nodo *y = x->der;
+    x->der = y->izq;
+    if (y->izq != arbol->nulo) {
+        y->izq->padre = x;
+    }
+    y->padre = x->padre;
+
+    if (x->padre == arbol->nulo) {
+        arbol->raiz = y;
+    } else if (x == x->padre->izq) {
+        x->padre->izq = y;
+    } else {
+        x->padre->der = y;
+    }
+    y->izq = x;
+    x->padre = y;
+}
+
+// Rotacion derecha de complejidad O(1)
+void rotarDer(ArbolRN *arbol, Nodo *x) {
+    Nodo *y = x->izq;
+    x->izq = y->der;
+    if (y->der != arbol->nulo) {
+        y->der->padre = x;
+    }
+    y->padre = x->padre;
+
+    if (x->padre == arbol->nulo) {
+        arbol->raiz = y;
+    } else if (x == x->padre->der) {
+        x->padre->der = y;
+    } else {
+        x->padre->izq = y;
+    }
+    y->der = x;
+    x->padre = y;
+}
+
+// Algoritmo de rebalanceo FixUp
+void balancearInsercion(ArbolRN *arbol, Nodo *z) {
+    while (z->padre->color == ROJO) {
+        if (z->padre == z->padre->padre->izq) {
+            Nodo *tio = z->padre->padre->der;
+
+            // Caso 1: Tio es ROJO
+            if (tio->color == ROJO) {
+                z->padre->color = NEGRO;
+                tio->color = NEGRO;
+                z->padre->padre->color = ROJO;
+                z = z->padre->padre;
+            } else {
+                // Caso 2: Tio NEGRO y nodo en codo
+                if (z == z->padre->der) {
+                    z = z->padre;
+                    rotarIzq(arbol, z);
+                }
+                // Caso 3: Tio NEGRO y nodos en linea recta
+                z->padre->color = NEGRO;
+                z->padre->padre->color = ROJO;
+                rotarDer(arbol, z->padre->padre);
+            }
+        } else {
+            // Simetrico al anterior
+            Nodo *tio = z->padre->padre->izq;
+
+            if (tio->color == ROJO) {
+                z->padre->color = NEGRO;
+                tio->color = NEGRO;
+                z->padre->padre->color = ROJO;
+                z = z->padre->padre;
+            } else {
+                if (z == z->padre->izq) {
+                    z = z->padre;
+                    rotarDer(arbol, z);
+                }
+                z->padre->color = NEGRO;
+                z->padre->padre->color = ROJO;
+                rotarIzq(arbol, z->padre->padre);
+            }
+        }
+    }
+    arbol->raiz->color = NEGRO;
+}
+
+// Insercion forzada desde argumentos argv (sin balanceo para respetar tu imagen)
+void insertarForzado(ArbolRN *arbol, int llave, Color color) {
+    Nodo *z = (Nodo*)malloc(sizeof(Nodo));
+    z->llave = llave;
+    z->color = color;
+    z->izq = arbol->nulo;
+    z->der = arbol->nulo;
+
+    Nodo *y = arbol->nulo;
+    Nodo *x = arbol->raiz;
+
+    while (x != arbol->nulo) {
+        y = x;
+        if (z->llave < x->llave) {
+            x = x->izq;
+        } else {
+            x = x->der;
+        }
+    }
+
+    z->padre = y;
+    if (y == arbol->nulo) {
+        arbol->raiz = z;
+    } else if (z->llave < y->llave) {
+        y->izq = z;
+    } else {
+        y->der = z;
+    }
+}
+
+// Insercion real con auto-balanceo (para el menu interactivo)
+void insertarNodo(ArbolRN *arbol, int llave) {
+    Nodo *z = (Nodo*)malloc(sizeof(Nodo));
+    z->llave = llave;
+    z->color = ROJO;
+    z->izq = arbol->nulo;
+    z->der = arbol->nulo;
+
+    Nodo *y = arbol->nulo;
+    Nodo *x = arbol->raiz;
+
+    while (x != arbol->nulo) {
+        y = x;
+        if (z->llave < x->llave) {
+            x = x->izq;
+        } else {
+            x = x->der;
+        }
+    }
+
+    z->padre = y;
+    if (y == arbol->nulo) {
+        arbol->raiz = z;
+    } else if (z->llave < y->llave) {
+        y->izq = z;
+    } else {
+        y->der = z;
+    }
+
+    if (z->padre == arbol->nulo) {
+        z->color = NEGRO;
+        return;
+    }
+    if (z->padre->padre == arbol->nulo) {
+        return;
+    }
+
+    balancearInsercion(arbol, z);
+}
+
+// Auxiliar para leer color y numero del texto en consola
+void parsearNodo(char *cadena, int *llave, Color *color) {
+    if (cadena[0] == 'n' || cadena[0] == 'N') {
+        *color = NEGRO;
+    } else if (cadena[0] == 'r' || cadena[0] == 'R') {
+        *color = ROJO;
+    } else {
+        printf("Error: Formato invalido en %s\n", cadena);
+        exit(1);
+    }
+    *llave = atoi(&cadena[1]);
+}
+
+// Imprime el arbol acostado para facil visualizacion
+void imprimirArbol(ArbolRN *arbol, Nodo *raiz, int espacio) {
+    if (raiz == arbol->nulo) {
+        return;
+    }
+    espacio += 5;
+    imprimirArbol(arbol, raiz->der, espacio);
+    printf("\n");
+    for (int i = 5; i < espacio; i++) {
+        printf(" ");
+    }
+    char c = (raiz->color == ROJO) ? 'R' : 'N';
+    printf("%d(%c)\n", raiz->llave, c);
+    imprimirArbol(arbol, raiz->izq, espacio);
+}
+
+int main(int argc, char *argv[]) {
+    ArbolRN *miArbol = crearArbol();
+
+    if (argc < 2) {
+        printf("Error: Debes ingresar el arbol por consola.\n");
+        printf("Ejemplo: ./arbol n11 r2 n14 n1 n7 r15 r5 r8\n");
+        return 1;
+    }
+
+    // 1. Cargamos el arbol exactamente como viene en los argumentos
+    int llaveTemp;
+    Color colorTemp;
+    for (int i = 1; i < argc; i++) {
+        parsearNodo(argv[i], &llaveTemp, &colorTemp);
+        insertarForzado(miArbol, llaveTemp, colorTemp);
+    }
+
+    // 2. Mostramos el arbol inicial
+    printf("\n===================================================\n");
+    printf("ARBOL INICIAL CARGADO (Acostado hacia la izquierda):\n");
+    printf("===================================================\n");
+    imprimirArbol(miArbol, miArbol->raiz, 0);
+    printf("===================================================\n");
+
+    // 3. Menu interactivo para insertar nodos y ver el balanceo
+    int nuevoValor;
+    while (1) {
+        printf("\nIngresa el nodo que deseas insertar (ej. 4) o -1 para salir: ");
+        if (scanf("%d", &nuevoValor) != 1 || nuevoValor == -1) {
+            printf("Saliendo de la simulacion.\n");
+            break;
+        }
+
+        printf("\n--- Insertando %d y ejecutando FixUp ---\n", nuevoValor);
+        insertarNodo(miArbol, nuevoValor);
+
+        printf("\n===================================================\n");
+        printf("NUEVO ESTADO DEL ARBOL:\n");
+        printf("===================================================\n");
+        imprimirArbol(miArbol, miArbol->raiz, 0);
+        printf("===================================================\n");
+    }
+
+    return 0;
+}
