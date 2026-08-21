@@ -1,55 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <time.h>
-
-// funcion merge
-void merge(int A[], int inicio, int medio, int fin) {
-    int n1 = medio - inicio + 1;
-    int n2 = fin - medio;
-
-    int *L = malloc(n1 * sizeof(int));
-    int *R = malloc(n2 * sizeof(int));
-
-    for (int i = 0; i < n1; i++)
-        L[i] = A[inicio + i];
-
-    for (int j = 0; j < n2; j++)
-        R[j] = A[medio + 1 + j];
-
-    int i = 0, j = 0, k = inicio;
-
-    while (i < n1 && j < n2) {
-        if (L[i] <= R[j]) {
-            A[k] = L[i];
-            i++;
-        } else {
-            A[k] = R[j];
-            j++;
-        }
-        k++;
-    }
-
-    while (i < n1) {
-        A[k++] = L[i++];
-    }
-
-    while (j < n2) {
-        A[k++] = R[j++];
-    }
-
-    free(L);
-    free(R);
-}
-
-// funcion merge sort
-void mergeSort(int A[], int inicio, int fin) {
-    if (inicio < fin) {
-        int medio = (inicio + fin) / 2;
-        mergeSort(A, inicio, medio);
-        mergeSort(A, medio + 1, fin);
-        merge(A, inicio, medio, fin);
-    }
-}
 
 int main(){
 
@@ -63,6 +15,7 @@ int main(){
     int *datos = malloc(max_datos * sizeof(int));
     int total = 0;
 
+    // Leer todos los datos del archivo CSV Va guardando numero por numero en el arreglo "datos"
     while(total < max_datos && fscanf(archivo, "%d,", &datos[total]) == 1){
         total++;
     }
@@ -85,28 +38,49 @@ int main(){
         return 1;
     }
 
-    printf("\nN,Tiempo_promedio(segundos)\n");
+    printf("\nN,Instrucciones,Formula,Tiempo_promedio(segundos)\n");
 
+    //Variar el tamaño del problema (k)
     for(int k = paso; k <= max_n; k += paso){
 
+        int contador = 0;
         double tiempo_total = 0;
 
+        // CICLO 3: Repetir 30 veces para sacar promedio
         for(int rep = 0; rep < 30; rep++){
 
             int *v = malloc(k * sizeof(int));
 
-            // copiar datos
+            //Copiar los datos base al arreglo de trabajo
             for(int i = 0; i < k; i++){
                 v[i] = datos[i];
             }
 
             clock_t inicio = clock();
 
-            mergeSort(v, 0, k - 1);
+            //Algoritmo principal (selection sort por maximos) n cada iteracion se coloca el mayor al final del segmento no ordenado
+            for(int i = 0; i < k - 1; i++){
+
+                int idx_max = 0;
+
+                //Buscar el elemento maximo en el rango [0, k-i) Cada vuelta reduce el rango porque el final ya esta ordenado
+                for(int j = 1; j < k - i; j++){
+                    if(v[j] > v[idx_max]){
+                        idx_max = j;
+                    }
+                    contador++; // contar comparaciones
+                }
+
+                // Se coloca el maximo en la posicion final del segmento
+                int aux = v[k - 1 - i];
+                v[k - 1 - i] = v[idx_max];
+                v[idx_max] = aux;
+            }
 
             clock_t fin = clock();
 
             double tiempo = (double)(fin - inicio) / CLOCKS_PER_SEC;
+
             tiempo_total += tiempo;
 
             free(v);
@@ -114,7 +88,9 @@ int main(){
 
         double tiempo_promedio = tiempo_total / 30.0;
 
-        printf("%d,%f\n", k, tiempo_promedio);
+        int formula = k * (k - 1) / 2;
+
+        printf("%d|%d|%d|%f\n", k, contador, formula, tiempo_promedio);
     }
 
     free(datos);
